@@ -1,37 +1,4 @@
-# VSCode
-.vscode/
 
-# Jobs and runtime artifacts
-jobs/
-output.json
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Logs
-*.log
-
-# ZIP files
-*.zip
 #.idea
 .idea/
 
@@ -57,15 +24,12 @@ target/
 *.iws
 *.ipr
 out/
-!/.idea/
-.idea/tasks.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
-.idea/workspace.xml
-.idea/modules.xml
-.idea/misc.xml
-.idea/vcs.xml
+.idea/*
+!.idea/codeStyles/
+!.idea/inspectionProfiles/
+!.idea/runConfigurations/
+!.idea/dictionaries/
+!.idea/shelf/
 
 # NetBeans
 /nbproject/private/
