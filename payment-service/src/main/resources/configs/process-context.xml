@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<beans default-lazy-init="true"
+       xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:p="http://www.springframework.org/schema/p"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.2.xsd">
+
+    <!-- 1. 抽象父Bean（定义通用属性） -->
+    <bean id="abstractProcessor" class="com.example.rpc.AbstractProcessor" abstract="true">
+        <!-- 上下文类型（泛型约束） -->
+        <property name="contextClassType" value="com.example.payment.service.TxnContext" />
+
+        <!-- 默认Filter链（所有子Bean都会继承） -->
+        <property name="processFilters">
+            <list>
+                <bean p:position="10" class="com.example.filter.AutoCheckReqFilter"/>
+                <bean p:position="20" class="com.example.filter.LoadContextFilter"/>
+            </list>
+        </property>
+    </bean>
+
+    <!-- 2. 具体业务处理器（继承父Bean并追加Filter） -->
+    <bean id="myWithdraw" class="com.example.rpc.AbstractProcessor" parent="abstractProcessor">
+        <!-- 请求/响应类型（用于反序列化） -->
+        <property name="requestClassType" value="com.example.payment.entity.req.WithdrawReq" />
+        <property name="responseClassType" value="com.example.payment.entity.resp.WithdrawResp" />
+
+        <!-- 追加的Filter（与父Bean的Filter合并） -->
+        <property name="addProcessFilters">
+            <list>
+                <bean p:position="100" p:transactionalGroup="100" class="com.example.filter.IdeFilter"/>
+                <bean p:position="200" p:transactionalGroup="100" class="com.example.filter.LoadContextFilter"/>
+<!--                <bean p:position="300" p:transactionalGroup="100" class="com.yourcompany.filter.BizFilter"/>-->
+<!--                <bean p:position="400" p:transactionalGroup="400" class="com.yourcompany.filter.PayFilter"/>-->
+            </list>
+        </property>
+    </bean>
+
+</beans>

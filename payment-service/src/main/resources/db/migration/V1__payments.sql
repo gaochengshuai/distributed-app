@@ -1,0 +1,7 @@
+﻿CREATE TABLE IF NOT EXISTS payments (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  order_no VARCHAR(64),
+  amount DECIMAL(10,2),
+  status VARCHAR(32),
+  created_at DATETIME
+);

@@ -1,0 +1,6 @@
+﻿CREATE TABLE IF NOT EXISTS messages (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  topic VARCHAR(128),
+  payload TEXT,
+  created_at DATETIME
+);

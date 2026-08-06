@@ -1,0 +1,42 @@
+﻿server:
+  port: 8080
+
+spring:
+  cloud:
+    gateway:
+#      globalcors:
+#        cors-configurations:
+#          '[/**]':
+#            allowed-origins: "http://localhost:5173"
+#            allowed-methods:
+#              - GET
+#              - POST
+#              - PUT
+#              - DELETE
+#             - OPTIONS
+#            allowed-headers: "*"
+#            allow-credentials: true
+      routes:
+        - id: system
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/system/**,/api/auth/**
+          filters:
+            - StripPrefix=0
+        - id: payment
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/payments/**,/api/loan/**
+        - id: message
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/messages/**
+        - id: report
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/reports/**
+
+security:
+  jwt:
+    secret: nMc+2ISSIUcy4YSPSbCOSSdse7LZyB/kzkjnfhZVXtc=
+    expiration: 8640000

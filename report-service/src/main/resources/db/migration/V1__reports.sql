@@ -1,0 +1,6 @@
+﻿CREATE TABLE IF NOT EXISTS reports (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(128),
+  content LONGTEXT,
+  created_at DATETIME
+);
