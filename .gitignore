@@ -57,15 +57,12 @@ target/
 *.iws
 *.ipr
 out/
-!/.idea/
-.idea/tasks.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
-.idea/workspace.xml
-.idea/modules.xml
-.idea/misc.xml
-.idea/vcs.xml
+.idea/*
+!.idea/codeStyles/
+!.idea/inspectionProfiles/
+!.idea/runConfigurations/
+!.idea/dictionaries/
+!.idea/shelf/
 
 # NetBeans
 /nbproject/private/
