@@ -13,7 +13,7 @@ public class Product implements Serializable {
     /**
      * 产品代码
      */
-    private String productCd;
+    private String productId;
 
     /**
      * 产品名称
@@ -28,11 +28,11 @@ public class Product implements Serializable {
 
 
     /**
-     * 还款方式
+     * 提款方式
      */
     public WithdrawMode withdrawMode;
     /**
-     *
+     *  还款方式
      * */
     public RepayMethod repayMethod;
 

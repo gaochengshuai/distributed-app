@@ -10,4 +10,5 @@ public class LoanInfo {
     private CustCard custCard;
     private ClsOrder order;
     private CustInfo custInfo;
+    private ClsLoanDef loanDef;
 }
