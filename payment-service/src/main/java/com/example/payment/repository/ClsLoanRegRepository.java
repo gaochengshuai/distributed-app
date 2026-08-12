@@ -35,4 +35,9 @@ public interface ClsLoanRegRepository extends JpaRepository<ClsLoanReg, Long> {
      * 根据客户ID查询
      */
     List<ClsLoanReg> findByCustId(String custId);
+
+    /**
+     * 根据订单号查询贷款登记信息
+     * */
+    Optional<ClsLoanReg> findByOrderId(String orderId);
 }

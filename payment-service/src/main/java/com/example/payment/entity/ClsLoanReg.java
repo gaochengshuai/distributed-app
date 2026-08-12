@@ -58,6 +58,11 @@ public class ClsLoanReg {
     @Column(name = "APLLY_TIME", nullable = false)
     private Date apllyTime;
 
+    @Column(name = "ORDER_ID", length = 32)
     private String orderId;
+
+    @ColumnDefault("CURRENT_TIMESTAMP")
+    @Column(name = "UPDATE_TIME")
+    private Date updateTime;
 
 }

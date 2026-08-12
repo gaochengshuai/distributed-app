@@ -40,6 +40,13 @@ public class RepaymentService {
     @Autowired
     private ReconExceptionRepository reconExceptionRepo;
 
+    /**
+     * 根据订单ID查询还款记录（供对账服务使用）
+     */
+    public List<ClsRepayRecord> findRepayRecordsByOrderId(String orderId) {
+        return repayRecordRepo.findByOrderId(orderId);
+    }
+
     private static final Logger logger = LoggerFactory.getLogger(RepaymentService.class);
 
     // 小额容差阈值（1元）
