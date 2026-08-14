@@ -20,10 +20,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.IntStream;
 
 @Component
@@ -46,6 +43,10 @@ public class WithdrawService {
 
     @Autowired
     private ReconExceptionRepository reconExceptionRepo;
+
+    // ✅ 注入费用计算引擎
+    @Autowired
+    private FeeCalculatorEngine feeCalculatorEngine;
 
     private static Logger logger = LoggerFactory.getLogger(WithdrawService.class);
 
@@ -386,80 +387,70 @@ public class WithdrawService {
     }
 
     /**
-     * 创建还款计划
+     * 创建还款计划（使用费用计算引擎）
+     * 
      * @param loanReg 贷款登记记录
      */
     private void createRepayPlan(ClsLoanReg loanReg) {
         logger.info("开始创建还款计划，loanRegId: {}, loanPrin: {}", 
             loanReg.getLoanRegId(), loanReg.getLoanPrin());
         
-        // TODO: 根据还款方式（等额本息、等额本金等）生成详细的还款计划
-        // 当前简化处理：根据贷款期限生成多期计划
+        // ✅ 从产品配置获取还款方式和利率（假设产品表有这些字段）
+        // TODO: 实际应从数据库或配置中获取
+        BigDecimal annualRate = new BigDecimal("0.05");  // 默认5%年利率，实际应从 product 表获取
+        int termCount = 12;  // 默认12期，实际应从请求或产品配置获取
         
-        int termCount = 12; // 默认12期，实际应从产品配置或请求中获取
-        BigDecimal totalPrin = loanReg.getLoanPrin();
-        BigDecimal prinPerTerm = totalPrin.divide(new BigDecimal(termCount), 2, BigDecimal.ROUND_HALF_UP);
-        BigDecimal feePerTerm = loanReg.getTxnFeeAmt().divide(new BigDecimal(termCount), 2, BigDecimal.ROUND_HALF_UP);
+
+        // 计算手续费率
+        BigDecimal feeRate = loanReg.getTxnFeeAmt().compareTo(BigDecimal.ZERO) > 0 
+            ? loanReg.getTxnFeeAmt().divide(loanReg.getLoanPrin(), 4, BigDecimal.ROUND_HALF_UP)
+            : null;
         
+        // ✅ 调用费用计算引擎生成还款计划
+        List<FeeCalculatorEngine.RepaymentTerm> terms = feeCalculatorEngine.calculateRepaymentPlan(
+            loanReg.getLoanPrin(),
+            annualRate,
+            termCount,
+            RepayMethod.AT,
+            feeRate
+        );
+        
+        // ✅ 保存到数据库
         Date startDate = new Date();
-        
-        // ✅ 使用 IntStream 生成期数序列，提取单期创建逻辑
-        IntStream.rangeClosed(1, termCount)
-            .mapToObj(i -> createRepayPlanForTerm(loanReg, i, termCount, totalPrin, prinPerTerm, feePerTerm, startDate))
-            .forEach(em::persist);  // ✅ 使用方法引用批量保存
-        
-        logger.info("创建还款计划成功，共{}期，billNo: {}", termCount, loanReg.getBillNo());
-    }
+        for (FeeCalculatorEngine.RepaymentTerm term : terms) {
+            ClsRepayPlan plan = new ClsRepayPlan();
+            plan.setBillNo(loanReg.getBillNo());
+            plan.setContrNo(loanReg.getContrNo());
+            plan.setCustId(loanReg.getCustId());
+            plan.setTermNo(term.getTermNo());
+            
+            // 计算到期日
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(startDate);
+            cal.add(Calendar.MONTH, term.getTermNo());
+            plan.setDueDate(cal.getTime());
+            
+            plan.setPrinAmt(term.getPrincipal());
+            plan.setInterestAmt(term.getInterest());
+            plan.setFeeAmt(term.getFee());
+            plan.setTotalAmt(term.getTotal());
+            
+            plan.setPaidPrin(BigDecimal.ZERO);
+            plan.setPaidInterest(BigDecimal.ZERO);
+            plan.setPaidFee(BigDecimal.ZERO);
+            plan.setRemainAmt(term.getTotal());
+            plan.setStatus("U");  // 未还
+            plan.setOverdueDays(0);
+            plan.setCreateTime(new Date());
+            plan.setUpdateTime(new Date());
 
-    /**
-     * 创建单期还款计划（提取为独立方法，便于测试和复用）
-     * 
-     * @param loanReg 贷款登记
-     * @param termNo 期数
-     * @param termCount 总期数
-     * @param totalPrin 总本金
-     * @param prinPerTerm 每期本金
-     * @param feePerTerm 每期手续费
-     * @param startDate 起始日期
-     * @return 还款计划对象
-     */
-    private ClsRepayPlan createRepayPlanForTerm(ClsLoanReg loanReg, int termNo, int termCount,
-                                                 BigDecimal totalPrin, BigDecimal prinPerTerm,
-                                                 BigDecimal feePerTerm, Date startDate) {
-        ClsRepayPlan plan = new ClsRepayPlan();
-        plan.setBillNo(loanReg.getBillNo());
-        plan.setContrNo(loanReg.getContrNo());
-        plan.setCustId(loanReg.getCustId());
-        plan.setTermNo(termNo);
+            em.persist(plan);
+            
+            logger.debug("创建第{}期还款计划，本金: {}, 利息: {}, 手续费: {}, 总额: {}", 
+                term.getTermNo(), term.getPrincipal(), term.getInterest(), term.getFee(), term.getTotal());
+        }
         
-        // 计算到期日（每月一期）
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(startDate);
-        cal.add(Calendar.MONTH, termNo);
-        plan.setDueDate(cal.getTime());
-        
-        // 最后一期调整本金，避免除不尽的误差
-        BigDecimal currentPrin = (termNo == termCount) ? 
-            totalPrin.subtract(prinPerTerm.multiply(new BigDecimal(termCount - 1))) : 
-            prinPerTerm;
-        
-        plan.setPrinAmt(currentPrin);
-        plan.setInterestAmt(BigDecimal.ZERO); // TODO: 根据利率计算利息
-        plan.setFeeAmt(feePerTerm);
-        plan.setTotalAmt(currentPrin.add(plan.getInterestAmt()).add(feePerTerm));
-        
-        plan.setPaidPrin(BigDecimal.ZERO);
-        plan.setPaidInterest(BigDecimal.ZERO);
-        plan.setPaidFee(BigDecimal.ZERO);
-        plan.setRemainAmt(plan.getTotalAmt());
-        plan.setStatus("U"); // 未还
-        plan.setOverdueDays(0);
-        plan.setCreateTime(new Date());
-        plan.setUpdateTime(new Date());
-
-        logger.debug("创建第{}期还款计划，dueDate: {}", termNo, plan.getDueDate());
-        
-        return plan;
+        logger.info("创建还款计划成功，共{}期，billNo: {}", terms.size(), loanReg.getBillNo());
     }
 
     /**

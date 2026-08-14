@@ -2,6 +2,7 @@ package com.example.payment.service;
 
 import com.example.payment.entity.*;
 import com.example.payment.enums.OrderStatus;
+import com.example.payment.enums.RepayMethod;
 import com.example.payment.repository.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
@@ -45,6 +47,10 @@ public class ReconciliationService {
 
     @Autowired
     private RepaymentService repaymentService;
+
+    // ✅ 注入费用计算引擎
+    @Autowired
+    private FeeCalculatorEngine feeCalculatorEngine;
 
     private static final Logger logger = LoggerFactory.getLogger(ReconciliationService.class);
 
@@ -266,41 +272,68 @@ public class ReconciliationService {
     }
 
     /**
-     * 为对账补账创建还款计划
+     * 为对账场景创建还款计划（使用费用计算引擎）
+     * 
+     * @param loanReg 贷款登记记录
      */
     private void createRepayPlanForReconcile(ClsLoanReg loanReg) {
         logger.info("开始创建还款计划，loanRegId: {}, loanPrin: {}", 
             loanReg.getLoanRegId(), loanReg.getLoanPrin());
         
-        // TODO: 从产品配置或贷款登记中获取期数，这里默认12期
-        int termCount = 12;
-        BigDecimal totalPrin = loanReg.getLoanPrin();
-        BigDecimal prinPerTerm = totalPrin.divide(new BigDecimal(termCount), 2, BigDecimal.ROUND_HALF_UP);
-        BigDecimal feePerTerm = loanReg.getTxnFeeAmt().divide(new BigDecimal(termCount), 2, BigDecimal.ROUND_HALF_UP);
+        // ✅ 从产品配置获取还款方式和利率（假设产品表有这些字段）
+        BigDecimal annualRate = new BigDecimal("0.05");  // 默认5%年利率
+        int termCount = 12;  // 默认12期
         
+
+        // 计算手续费率
+        BigDecimal feeRate = loanReg.getTxnFeeAmt().compareTo(BigDecimal.ZERO) > 0 
+            ? loanReg.getTxnFeeAmt().divide(loanReg.getLoanPrin(), 4, BigDecimal.ROUND_HALF_UP)
+            : null;
+        
+        // ✅ 调用费用计算引擎生成还款计划
+        List<FeeCalculatorEngine.RepaymentTerm> terms = feeCalculatorEngine.calculateRepaymentPlan(
+            loanReg.getLoanPrin(), annualRate,termCount, RepayMethod.AT,feeRate);
+        
+        // ✅ 保存到数据库
         Date startDate = new Date();
-        
-        for (int i = 1; i <= termCount; i++) {
+        for (FeeCalculatorEngine.RepaymentTerm term : terms) {
             ClsRepayPlan plan = new ClsRepayPlan();
             plan.setBillNo(loanReg.getBillNo());
             plan.setContrNo(loanReg.getContrNo());
             plan.setCustId(loanReg.getCustId());
-            plan.setTermNo(i);
-            plan.setDueDate(addMonths(startDate, i));
-            plan.setPrinAmt(prinPerTerm);
-            plan.setFeeAmt(feePerTerm);
-            plan.setStatus("U"); // 未还
+            plan.setTermNo(term.getTermNo());
+            
+            // 计算到期日
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(startDate);
+            cal.add(Calendar.MONTH, term.getTermNo());
+            plan.setDueDate(cal.getTime());
+            
+            plan.setPrinAmt(term.getPrincipal());
+            plan.setInterestAmt(term.getInterest());
+            plan.setFeeAmt(term.getFee());
+            plan.setTotalAmt(term.getTotal());
+            
+            plan.setPaidPrin(BigDecimal.ZERO);
+            plan.setPaidInterest(BigDecimal.ZERO);
+            plan.setPaidFee(BigDecimal.ZERO);
+            plan.setRemainAmt(term.getTotal());
+            plan.setStatus("U");  // 未还
+            plan.setOverdueDays(0);
             plan.setCreateTime(new Date());
             plan.setUpdateTime(new Date());
-            
+
             em.persist(plan);
+            
+            logger.debug("创建第{}期还款计划，本金: {}, 利息: {}, 手续费: {}, 总额: {}", 
+                term.getTermNo(), term.getPrincipal(), term.getInterest(), term.getFee(), term.getTotal());
         }
         
-        logger.info("还款计划创建完成，共{}期", termCount);
+        logger.info("还款计划创建完成，共{}期，billNo: {}", terms.size(), loanReg.getBillNo());
     }
 
     /**
-     * 日期增加月份
+     * 日期增加月份（保留此方法供其他地方使用）
      */
     private Date addMonths(Date date, int months) {
         java.util.Calendar cal = java.util.Calendar.getInstance();
