@@ -24,6 +24,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 @Component
 public class WithdrawService {
@@ -402,44 +403,63 @@ public class WithdrawService {
         
         Date startDate = new Date();
         
-        for (int i = 1; i <= termCount; i++) {
-            ClsRepayPlan plan = new ClsRepayPlan();
-            plan.setBillNo(loanReg.getBillNo());
-            plan.setContrNo(loanReg.getContrNo());
-            plan.setCustId(loanReg.getCustId());
-            plan.setTermNo(i);
-            
-            // 计算到期日（每月一期）
-            Calendar cal = Calendar.getInstance();
-            cal.setTime(startDate);
-            cal.add(Calendar.MONTH, i);
-            plan.setDueDate(cal.getTime());
-            
-            // 最后一期调整本金，避免除不尽的误差
-            BigDecimal currentPrin = (i == termCount) ? 
-                totalPrin.subtract(prinPerTerm.multiply(new BigDecimal(termCount - 1))) : 
-                prinPerTerm;
-            
-            plan.setPrinAmt(currentPrin);
-            plan.setInterestAmt(BigDecimal.ZERO); // TODO: 根据利率计算利息
-            plan.setFeeAmt(feePerTerm);
-            plan.setTotalAmt(currentPrin.add(plan.getInterestAmt()).add(feePerTerm));
-            
-            plan.setPaidPrin(BigDecimal.ZERO);
-            plan.setPaidInterest(BigDecimal.ZERO);
-            plan.setPaidFee(BigDecimal.ZERO);
-            plan.setRemainAmt(plan.getTotalAmt());
-            plan.setStatus("U"); // 未还
-            plan.setOverdueDays(0);
-            plan.setCreateTime(new Date());
-            plan.setUpdateTime(new Date());
-
-            em.persist(plan);
-            logger.debug("创建第{}期还款计划，planId: {}, dueDate: {}", 
-                i, plan.getPlanId(), plan.getDueDate());
-        }
+        // ✅ 使用 IntStream 生成期数序列，提取单期创建逻辑
+        IntStream.rangeClosed(1, termCount)
+            .mapToObj(i -> createRepayPlanForTerm(loanReg, i, termCount, totalPrin, prinPerTerm, feePerTerm, startDate))
+            .forEach(em::persist);  // ✅ 使用方法引用批量保存
         
         logger.info("创建还款计划成功，共{}期，billNo: {}", termCount, loanReg.getBillNo());
+    }
+
+    /**
+     * 创建单期还款计划（提取为独立方法，便于测试和复用）
+     * 
+     * @param loanReg 贷款登记
+     * @param termNo 期数
+     * @param termCount 总期数
+     * @param totalPrin 总本金
+     * @param prinPerTerm 每期本金
+     * @param feePerTerm 每期手续费
+     * @param startDate 起始日期
+     * @return 还款计划对象
+     */
+    private ClsRepayPlan createRepayPlanForTerm(ClsLoanReg loanReg, int termNo, int termCount,
+                                                 BigDecimal totalPrin, BigDecimal prinPerTerm,
+                                                 BigDecimal feePerTerm, Date startDate) {
+        ClsRepayPlan plan = new ClsRepayPlan();
+        plan.setBillNo(loanReg.getBillNo());
+        plan.setContrNo(loanReg.getContrNo());
+        plan.setCustId(loanReg.getCustId());
+        plan.setTermNo(termNo);
+        
+        // 计算到期日（每月一期）
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(startDate);
+        cal.add(Calendar.MONTH, termNo);
+        plan.setDueDate(cal.getTime());
+        
+        // 最后一期调整本金，避免除不尽的误差
+        BigDecimal currentPrin = (termNo == termCount) ? 
+            totalPrin.subtract(prinPerTerm.multiply(new BigDecimal(termCount - 1))) : 
+            prinPerTerm;
+        
+        plan.setPrinAmt(currentPrin);
+        plan.setInterestAmt(BigDecimal.ZERO); // TODO: 根据利率计算利息
+        plan.setFeeAmt(feePerTerm);
+        plan.setTotalAmt(currentPrin.add(plan.getInterestAmt()).add(feePerTerm));
+        
+        plan.setPaidPrin(BigDecimal.ZERO);
+        plan.setPaidInterest(BigDecimal.ZERO);
+        plan.setPaidFee(BigDecimal.ZERO);
+        plan.setRemainAmt(plan.getTotalAmt());
+        plan.setStatus("U"); // 未还
+        plan.setOverdueDays(0);
+        plan.setCreateTime(new Date());
+        plan.setUpdateTime(new Date());
+
+        logger.debug("创建第{}期还款计划，dueDate: {}", termNo, plan.getDueDate());
+        
+        return plan;
     }
 
     /**

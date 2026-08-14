@@ -87,36 +87,37 @@ public class ReconciliationService {
         List<ClsOrder> orders = orderRepo.findByOrderStatus(String.valueOf(OrderStatus.S));
 
         for (ClsOrder order : orders) {
-            ReconException exception = null;
-            
             try {
                 boolean coreHasRecord = checkCoreHasRecord(order);
 
                 if (!coreHasRecord) {
                     logger.warn("发现支付成功但核心未入账的订单，orderId: {}", order.getOrderId());
 
-                    // 在外层创建对账异常记录（独立事务，不受内层影响）
-                    exception = createReconExceptionInOuterTransaction(order, "PAY_SUCCESS_CORE_FAIL", 
+                    // 创建对账异常记录（独立事务）
+                    ReconException exception = createReconExceptionInOuterTransaction(order, "PAY_SUCCESS_CORE_FAIL", 
                             "支付已成功但核心系统无记录");
 
-                    // 每个订单使用独立事务处理业务逻辑
-                    processSingleOrderReconciliation(order);
+                    try {
+                        // 每个订单使用独立事务处理业务逻辑
+                        processSingleOrderReconciliation(order);
+                        
+                        // 成功后更新异常状态（独立事务）
+                        updateReconExceptionStatusAfterSuccess(order.getOrderId(), "自动补账成功");
+                        
+                    } catch (Exception e) {
+                        logger.error("对账处理异常，orderId: {}", order.getOrderId(), e);
+                        
+                        // 更新异常状态为失败（独立事务）
+                        updateReconExceptionStatusInOuterTransaction(
+                            exception.getExceptionId(), "H", "自动处理失败: " + e.getMessage());
+                    }
                     
                     logger.info("订单对账完成，orderId: {}", order.getOrderId());
                 }
 
             } catch (Exception e) {
-                logger.error("对账处理异常，orderId: {}", order.getOrderId(), e);
-                
-                // 在外层更新异常状态为失败（独立事务，不受内层回滚影响）
-                if (exception != null) {
-                    try {
-                        updateReconExceptionStatusInOuterTransaction(
-                            exception.getExceptionId(), "H", "自动处理失败: " + e.getMessage());
-                    } catch (Exception ex) {
-                        logger.error("更新对账异常状态失败", ex);
-                    }
-                }
+                // 外层异常：checkCoreHasRecord 或 createReconException 失败
+                logger.error("对账前置检查异常，orderId: {}", order.getOrderId(), e);
             }
         }
         
@@ -169,44 +170,34 @@ public class ReconciliationService {
 
     /**
      * 处理单个订单的对账（独立事务）
-     * 注意：对账异常的创建和更新在外层事务中管理
+     * 注意：外层已确保只有需要处理的订单才会调用此方法
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processSingleOrderReconciliation(ClsOrder order) {
         logger.info("开始处理单个订单对账，orderId: {}", order.getOrderId());
-        
-        boolean coreHasRecord = checkCoreHasRecord(order);
 
-        if (!coreHasRecord) {
-            logger.warn("发现支付成功但核心未入账的订单，orderId: {}", order.getOrderId());
-
-            try {
-                // 根据订单类型处理
-                if ("WITHDRAW".equals(order.getOrderType())) {
-                    // 放款：重新触发借据创建、期供生成和额度占用
-                    handleWithdrawReconcile(order);
-                    
-                    // 成功后更新对账异常状态（独立事务）
-                    updateReconExceptionStatusAfterSuccess(order.getOrderId(), "自动补账成功");
-                    
-                } else if ("REPAY".equals(order.getOrderType())) {
-                    // 还款：调用入账接口，重新执行冲销、生成分录、更新期供状态
-                    handleRepayReconcile(order);
-                    
-                    // 成功后更新对账异常状态（独立事务）
-                    updateReconExceptionStatusAfterSuccess(order.getOrderId(), "自动补账成功");
-                }
+        try {
+            // 根据订单类型处理（外层已确认需要处理，无需再次检查）
+            if ("WITHDRAW".equals(order.getOrderType())) {
+                // 放款：重新触发借据创建、期供生成和额度占用
+                handleWithdrawReconcile(order);
+                // 成功后更新对账异常状态（独立事务）
+                updateReconExceptionStatusAfterSuccess(order.getOrderId(), "自动补账成功");
                 
-                logger.info("订单对账处理成功，orderId: {}", order.getOrderId());
-                
-            } catch (Exception e) {
-                logger.error("单个订单对账处理失败，orderId: {}", order.getOrderId(), e);
-                
-                // 不更新异常状态，由外层方法处理
-                throw new RuntimeException("订单对账处理失败: " + e.getMessage(), e);
+            } else if ("REPAY".equals(order.getOrderType())) {
+                // 还款：调用入账接口，重新执行冲销、生成分录、更新期供状态
+                handleRepayReconcile(order);
+                // 成功后更新对账异常状态（独立事务）
+                updateReconExceptionStatusAfterSuccess(order.getOrderId(), "自动补账成功");
             }
-        } else {
-            logger.info("核心已有记录，无需对账，orderId: {}", order.getOrderId());
+            
+            logger.info("订单对账处理成功，orderId: {}", order.getOrderId());
+            
+        } catch (Exception e) {
+            logger.error("单个订单对账处理失败，orderId: {}", order.getOrderId(), e);
+            
+            // 不更新异常状态，由外层方法处理
+            throw new RuntimeException("订单对账处理失败: " + e.getMessage(), e);
         }
     }
 
@@ -378,36 +369,38 @@ public class ReconciliationService {
         List<ClsOrder> orders = orderRepo.findByOrderStatus(String.valueOf(OrderStatus.F));
 
         for (ClsOrder order : orders) {
-            ReconException exception = null;
-            
             try {
                 boolean coreHasRecord = checkCoreHasRecord(order);
 
                 if (coreHasRecord) {
                     logger.warn("发现核心已入账但支付失败的订单，orderId: {}", order.getOrderId());
 
-                    // 在外层创建对账异常记录
-                    exception = createReconExceptionInOuterTransaction(order, "CORE_SUCCESS_PAY_FAIL", 
+                    // 创建对账异常记录（独立事务）
+                    ReconException exception = createReconExceptionInOuterTransaction(order, "CORE_SUCCESS_PAY_FAIL", 
                             "核心系统已入账但支付失败");
 
-                    // 每个订单使用独立事务处理冲正逻辑
-                    processSingleOrderReversal(order);
+                    try {
+                        // 每个订单使用独立事务处理冲正逻辑
+                        processSingleOrderReversal(order);
+                        
+                        // 成功后更新异常状态（独立事务）
+                        updateReconExceptionStatusAfterSuccess(order.getOrderId(), "冲正成功");
+                        
+                    } catch (Exception e) {
+                        logger.error("冲正处理异常，orderId: {}", order.getOrderId(), e);
+                        
+                        // 更新异常状态为失败（独立事务）
+                        // 注意：如果更新失败，异常会被外层 catch 捕获并记录
+                        updateReconExceptionStatusInOuterTransaction(
+                            exception.getExceptionId(), "H", "冲正失败: " + e.getMessage());
+                    }
                     
                     logger.info("订单冲正完成，orderId: {}", order.getOrderId());
                 }
 
             } catch (Exception e) {
-                logger.error("冲正处理异常，orderId: {}", order.getOrderId(), e);
-                
-                // 在外层更新异常状态为失败
-                if (exception != null) {
-                    try {
-                        updateReconExceptionStatusInOuterTransaction(
-                            exception.getExceptionId(), "H", "冲正失败: " + e.getMessage());
-                    } catch (Exception ex) {
-                        logger.error("更新对账异常状态失败", ex);
-                    }
-                }
+                // 外层异常：checkCoreHasRecord 或 createReconException 失败
+                logger.error("冲正前置检查异常，orderId: {}", order.getOrderId(), e);
             }
         }
         
@@ -416,31 +409,24 @@ public class ReconciliationService {
 
     /**
      * 处理单个订单的冲正（独立事务）
+     * 注意：外层已确保只有需要处理的订单才会调用此方法
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void processSingleOrderReversal(ClsOrder order) {
         logger.info("开始处理单个订单冲正，orderId: {}", order.getOrderId());
-        
-        boolean coreHasRecord = checkCoreHasRecord(order);
 
-        if (coreHasRecord) {
-            logger.warn("发现核心已入账但支付失败的订单，orderId: {}", order.getOrderId());
-
-            try {
-                // 尝试撤销之前的入账操作（生成反向分录）
-                handleReversal(order);
-                
-                // 成功后更新对账异常状态（独立事务）
-                updateReconExceptionStatusAfterSuccess(order.getOrderId(), "冲正成功");
-                
-                logger.info("订单冲正处理成功，orderId: {}", order.getOrderId());
-                
-            } catch (Exception e) {
-                logger.error("单个订单冲正处理失败，orderId: {}", order.getOrderId(), e);
-                throw new RuntimeException("订单冲正处理失败: " + e.getMessage(), e);
-            }
-        } else {
-            logger.info("核心无记录，无需冲正，orderId: {}", order.getOrderId());
+        try {
+            // 尝试撤销之前的入账操作（生成反向分录）
+            // 外层已确认核心有记录，无需再次检查
+            handleReversal(order);
+            // 成功后更新对账异常状态（独立事务）
+            updateReconExceptionStatusAfterSuccess(order.getOrderId(), "冲正成功");
+            
+            logger.info("订单冲正处理成功，orderId: {}", order.getOrderId());
+            
+        } catch (Exception e) {
+            logger.error("单个订单冲正处理失败，orderId: {}", order.getOrderId(), e);
+            throw new RuntimeException("订单冲正处理失败: " + e.getMessage(), e);
         }
     }
 
