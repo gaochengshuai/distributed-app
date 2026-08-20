@@ -48,3 +48,62 @@ export const paymentApi = {
     return apiClient.put(`/api/payments/${id}`, paymentData)
   }
 }
+
+// 贷款业务 API
+export const loanApi = {
+  /**
+   * 发起提款申请
+   */
+  withdraw(data) {
+    return apiClient.post('/api/loan/withdraw', data)
+  },
+  
+  /**
+   * 审核通过提款
+   */
+  approve(loanRegId) {
+    return apiClient.post(`/api/loan/approve/${loanRegId}`)
+  },
+  
+  /**
+   * 重试提款
+   */
+  retryWithdraw(orderId) {
+    return apiClient.post(`/api/loan/retry/${orderId}`)
+  },
+  
+  /**
+   * 发起还款
+   */
+  repay(params) {
+    return apiClient.post('/api/loan/repay', null, { params })
+  },
+  
+  /**
+   * 重试还款
+   */
+  retryRepay(orderId) {
+    return apiClient.post(`/api/loan/repay/retry/${orderId}`)
+  },
+  
+  /**
+   * 手动触发对账
+   */
+  reconcile() {
+    return apiClient.post('/api/loan/reconcile')
+  },
+  
+  /**
+   * 查询对账异常
+   */
+  getExceptions() {
+    return apiClient.get('/api/loan/reconcile/exceptions')
+  },
+  
+  /**
+   * 处理对账异常
+   */
+  handleException(params) {
+    return apiClient.post('/api/loan/reconcile/handle', null, { params })
+  }
+}

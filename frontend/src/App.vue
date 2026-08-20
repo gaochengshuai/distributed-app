@@ -17,7 +17,11 @@
 
     <div class="main-layout">
       <!-- 侧边栏 -->
-      <Sidebar v-if="store.state.token" :is-open="store.state.sidebarOpen" />
+      <Sidebar 
+        v-if="store.state.token" 
+        :is-open="store.state.sidebarOpen" 
+        @menu-change="handleMenuChange"
+      />
 
       <!-- 主内容区域 -->
       <main class="content-area">
@@ -31,11 +35,31 @@
         <!-- 登录视图 -->
         <LoginView v-if="!store.state.token" />
 
-        <!-- 仪表盘视图 -->
+        <!-- 订单管理视图 -->
         <DashboardView 
-          v-else 
+          v-else-if="currentView === 'orders'"
           @open-create="openModal('create')" 
           @open-edit="openModal('edit', $event)" 
+        />
+
+        <!-- 提款管理视图 -->
+        <WithdrawView 
+          v-else-if="currentView === 'withdraw'"
+        />
+
+        <!-- 还款管理视图 -->
+        <RepaymentView 
+          v-else-if="currentView === 'repayment'"
+        />
+
+        <!-- 对账管理视图 -->
+        <ReconciliationView 
+          v-else-if="currentView === 'reconciliation'"
+        />
+
+        <!-- 系统设置视图 -->
+        <SettingsView 
+          v-else-if="currentView === 'settings'"
         />
       </main>
     </div>
@@ -64,15 +88,22 @@
 </template>
 
 <script setup>
-import { reactive, onMounted } from 'vue'
+import { reactive, onMounted, ref } from 'vue'
 import Sidebar from './components/Sidebar.vue'
 import LoginView from './views/LoginView.vue'
 import DashboardView from './views/DashboardView.vue'
+import WithdrawView from './views/WithdrawView.vue'
+import RepaymentView from './views/RepaymentView.vue'
+import ReconciliationView from './views/ReconciliationView.vue'
+import SettingsView from './views/SettingsView.vue'
 import { usePaymentStore } from './stores/usePaymentStore'
 import { usePaymentLogic } from './composables/usePaymentLogic'
 
 const store = usePaymentStore()
 const { fetchPayments, submitPayment } = usePaymentLogic()
+
+// 当前视图状态
+const currentView = ref('orders')
 
 // 弹窗状态
 const modal = reactive({ visible: false, type: 'create' })
@@ -91,6 +122,15 @@ onMounted(() => {
 const handleLogout = () => {
   store.logout()
   store.showToast('已退出')
+}
+
+// 处理菜单切换
+const handleMenuChange = (menu) => {
+  currentView.value = menu
+  // 如果切换到订单管理，刷新数据
+  if (menu === 'orders') {
+    fetchPayments()
+  }
 }
 
 const openModal = (type, item = null) => {
@@ -114,6 +154,7 @@ const handleSubmit = async () => {
   }
 }
 </script>
+
 
 <style scoped>
 /* 全局容器：浅灰背景，深色文字 */

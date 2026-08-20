@@ -1,30 +1,75 @@
 <template>
   <aside :class="['sidebar', { 'sidebar-open': isOpen }]">
     <nav class="sidebar-nav">
-      <!-- 建议后续将 nav-item 提取为组件或使用 router-link -->
-      <div class="nav-item active">
-        <span class="icon">📊</span> 
+      <!-- 订单管理 -->
+      <div 
+        :class="['nav-item', { active: activeMenu === 'orders' }]"
+        @click="selectMenu('orders')"
+      >
+        <span class="icon">📋</span> 
         <span class="text">订单管理</span>
       </div>
-      <div class="nav-item">
-        <span class="icon">💳</span> 
-        <span class="text">支付渠道</span>
+      
+      <!-- 提款管理 -->
+      <div 
+        :class="['nav-item', { active: activeMenu === 'withdraw' }]"
+        @click="selectMenu('withdraw')"
+      >
+        <span class="icon">💰</span> 
+        <span class="text">提款管理</span>
       </div>
-      <div class="nav-item">
+      
+      <!-- 还款管理 -->
+      <div 
+        :class="['nav-item', { active: activeMenu === 'repayment' }]"
+        @click="selectMenu('repayment')"
+      >
+        <span class="icon">💳</span> 
+        <span class="text">还款管理</span>
+      </div>
+      
+      <!-- 对账管理 -->
+      <div 
+        :class="['nav-item', { active: activeMenu === 'reconciliation' }]"
+        @click="selectMenu('reconciliation')"
+      >
+        <span class="icon">🔍</span> 
+        <span class="text">对账管理</span>
+      </div>
+      
+      <!-- 系统设置 -->
+      <div 
+        :class="['nav-item', { active: activeMenu === 'settings' }]"
+        @click="selectMenu('settings')"
+      >
         <span class="icon">⚙️</span> 
         <span class="text">系统设置</span>
-      </div>
-      <div class="nav-item">
-        <span class="icon">❓</span> 
-        <span class="text">帮助文档</span>
       </div>
     </nav>
   </aside>
 </template>
 
 <script setup>
-defineProps({
+import { ref, watch } from 'vue'
+
+const props = defineProps({
   isOpen: Boolean
+})
+
+const emit = defineEmits(['menu-change'])
+
+// 当前激活的菜单项
+const activeMenu = ref('orders')
+
+// 选择菜单项
+const selectMenu = (menu) => {
+  activeMenu.value = menu
+  emit('menu-change', menu)
+}
+
+// 监听外部传入的菜单变化（可选）
+watch(() => props.isOpen, (newVal) => {
+  // 可以在这里添加侧边栏打开/关闭时的逻辑
 })
 </script>
 
