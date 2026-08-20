@@ -5,11 +5,28 @@
       <button @click="showWithdrawModal = true" class="btn btn-primary">+ 发起提款</button>
     </div>
 
+    <!-- 页签导航 -->
+    <div class="tabs-container">
+      <div 
+        :class="['tab-item', { active: activeTab === 'pending' }]"
+        @click="activeTab = 'pending'"
+      >
+        待审核提款
+        <span v-if="pendingWithdrawals.length > 0" class="badge">{{ pendingWithdrawals.length }}</span>
+      </div>
+      <div 
+        :class="['tab-item', { active: activeTab === 'failed' }]"
+        @click="activeTab = 'failed'"
+      >
+        支付失败订单
+        <span v-if="failedOrders.length > 0" class="badge">{{ failedOrders.length }}</span>
+      </div>
+    </div>
+
     <!-- 待审核列表 -->
-    <div class="section">
-      <h3>待审核申请款</h3>
+    <div v-if="activeTab === 'pending'" class="section">
       <div class="table-container">
-        <table v-if="pendingWithdrawals.length > 0">
+        <table>
           <thead>
             <tr>
               <th>贷款登记ID</th>
@@ -31,19 +48,22 @@
                 <button @click="handleApprove(item.loanRegId)" class="btn-link success">审核通过</button>
               </td>
             </tr>
+            <tr v-if="pendingWithdrawals.length === 0">
+              <td colspan="6" class="empty-state-cell">
+                <div class="empty-state">
+                  <p>暂无待审核的提款申请</p>
+                </div>
+              </td>
+            </tr>
           </tbody>
         </table>
-        <div v-else class="empty-state">
-          <p>暂无待审核的提款申请</p>
-        </div>
       </div>
     </div>
 
     <!-- 失败订单列表 -->
-    <div class="section">
-      <h3>支付失败订单（可重试）</h3>
+    <div v-if="activeTab === 'failed'" class="section">
       <div class="table-container">
-        <table v-if="failedOrders.length > 0">
+        <table>
           <thead>
             <tr>
               <th>订单号</th>
@@ -65,11 +85,15 @@
                 <button @click="handleRetry(order.orderId)" class="btn-link">重试</button>
               </td>
             </tr>
+            <tr v-if="failedOrders.length === 0">
+              <td colspan="6" class="empty-state-cell">
+                <div class="empty-state">
+                  <p>暂无失败的订单</p>
+                </div>
+              </td>
+            </tr>
           </tbody>
         </table>
-        <div v-else class="empty-state">
-          <p>暂无失败的订单</p>
-        </div>
       </div>
     </div>
 
@@ -151,6 +175,9 @@ const withdrawForm = reactive({
   applyUserId: '',
   applyUserName: ''
 })
+
+// 当前激活的页签
+const activeTab = ref('pending')
 
 // 加载待审核列表
 const loadPendingWithdrawals = async () => {
@@ -273,6 +300,56 @@ onMounted(() => {
   font-size: 1.5rem;
 }
 
+.tabs-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #e8e8e8;
+  padding-bottom: 0;
+}
+
+.tab-item {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+  color: #666666;
+  background: transparent;
+  position: relative;
+  margin-bottom: -2px;
+}
+
+.tab-item:hover {
+  color: #1890ff;
+  background: #f5f5f5;
+}
+
+.tab-item.active {
+  color: #1890ff;
+  border-bottom-color: #1890ff;
+  background: #ffffff;
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-block;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  white-space: nowrap;
+  border-radius: 9px;
+  background: #ff4d4f;
+  color: white;
+  margin-left: 6px;
+  font-weight: 500;
+}
+
 .section {
   margin-bottom: 2rem;
 }
@@ -322,10 +399,20 @@ td {
   color: #1890ff;
 }
 
+.empty-state-cell {
+  text-align: center;
+  padding: 3rem 1rem !important;
+}
+
 .empty-state {
   text-align: center;
   padding: 2rem;
   color: #999999;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
 }
 
 .btn-link {

@@ -11,7 +11,7 @@
     <div class="section">
       <h3>待处理对账异常</h3>
       <div class="table-container">
-        <table v-if="exceptions.length > 0">
+        <table>
           <thead>
             <tr>
               <th>异常ID</th>
@@ -53,11 +53,15 @@
                 </button>
               </td>
             </tr>
+            <tr v-if="exceptions.length === 0">
+              <td colspan="10" class="empty-state-cell">
+                <div class="empty-state">
+                  <p>暂无待处理的对账异常</p>
+                </div>
+              </td>
+            </tr>
           </tbody>
         </table>
-        <div v-else class="empty-state">
-          <p>暂无待处理的对账异常</p>
-        </div>
       </div>
     </div>
 
@@ -310,6 +314,22 @@ td {
   color: #52c41a;
 }
 
+.empty-state-cell {
+  text-align: center;
+  padding: 3rem 1rem !important;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #999999;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
 .status-badge {
   padding: 0.25rem 0.6rem;
   border-radius: 4px;
@@ -333,12 +353,6 @@ td {
   background: #e6f7ff;
   color: #1890ff;
   border: 1px solid #91d5ff;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 2rem;
-  color: #999999;
 }
 
 .btn-link {

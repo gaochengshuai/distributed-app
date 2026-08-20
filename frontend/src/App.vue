@@ -17,11 +17,7 @@
 
     <div class="main-layout">
       <!-- 侧边栏 -->
-      <Sidebar 
-        v-if="store.state.token" 
-        :is-open="store.state.sidebarOpen" 
-        @menu-change="handleMenuChange"
-      />
+      <Sidebar v-if="store.state.token" :is-open="store.state.sidebarOpen" @menu-change="handleMenuChange"/>
 
       <!-- 主内容区域 -->
       <main class="content-area">
@@ -36,31 +32,20 @@
         <LoginView v-if="!store.state.token" />
 
         <!-- 订单管理视图 -->
-        <DashboardView 
-          v-else-if="currentView === 'orders'"
-          @open-create="openModal('create')" 
-          @open-edit="openModal('edit', $event)" 
-        />
+        <DashboardView v-else-if="currentView === 'orders'" @open-create="openModal('create')" 
+          @open-edit="openModal('edit', $event)"/>
 
         <!-- 提款管理视图 -->
-        <WithdrawView 
-          v-else-if="currentView === 'withdraw'"
-        />
+        <WithdrawView v-else-if="currentView === 'withdraw'"/>
 
         <!-- 还款管理视图 -->
-        <RepaymentView 
-          v-else-if="currentView === 'repayment'"
-        />
+        <RepaymentView v-else-if="currentView === 'repayment'"/>
 
         <!-- 对账管理视图 -->
-        <ReconciliationView 
-          v-else-if="currentView === 'reconciliation'"
-        />
+        <ReconciliationView v-else-if="currentView === 'reconciliation'"/>
 
         <!-- 系统设置视图 -->
-        <SettingsView 
-          v-else-if="currentView === 'settings'"
-        />
+        <SettingsView v-else-if="currentView === 'settings'"/>
       </main>
     </div>
 

@@ -5,11 +5,28 @@
       <button @click="showRepayModal = true" class="btn btn-primary">+ 发起还款</button>
     </div>
 
+    <!-- 页签导航 -->
+    <div class="tabs-container">
+      <div 
+        :class="['tab-item', { active: activeTab === 'records' }]"
+        @click="activeTab = 'records'"
+      >
+        还款记录
+        <span v-if="repayRecords.length > 0" class="badge">{{ repayRecords.length }}</span>
+      </div>
+      <div 
+        :class="['tab-item', { active: activeTab === 'failed' }]"
+        @click="activeTab = 'failed'"
+      >
+        支付失败订单
+        <span v-if="failedOrders.length > 0" class="badge">{{ failedOrders.length }}</span>
+      </div>
+    </div>
+
     <!-- 还款记录列表 -->
-    <div class="section">
-      <h3>还款记录</h3>
+    <div v-if="activeTab === 'records'" class="section">
       <div class="table-container">
-        <table v-if="repayRecords.length > 0">
+        <table>
           <thead>
             <tr>
               <th>订单号</th>
@@ -43,19 +60,22 @@
                 </button>
               </td>
             </tr>
+            <tr v-if="repayRecords.length === 0">
+              <td colspan="7" class="empty-state-cell">
+                <div class="empty-state">
+                  <p>暂无还款记录</p>
+                </div>
+              </td>
+            </tr>
           </tbody>
         </table>
-        <div v-else class="empty-state">
-          <p>暂无还款记录</p>
-        </div>
       </div>
     </div>
 
     <!-- 失败订单列表 -->
-    <div class="section">
-      <h3>支付失败订单（可重试）</h3>
+    <div v-if="activeTab === 'failed'" class="section">
       <div class="table-container">
-        <table v-if="failedOrders.length > 0">
+        <table>
           <thead>
             <tr>
               <th>订单号</th>
@@ -77,11 +97,15 @@
                 <button @click="handleRetry(order.orderId)" class="btn-link">重试</button>
               </td>
             </tr>
+            <tr v-if="failedOrders.length === 0">
+              <td colspan="6" class="empty-state-cell">
+                <div class="empty-state">
+                  <p>暂无失败的订单</p>
+                </div>
+              </td>
+            </tr>
           </tbody>
         </table>
-        <div v-else class="empty-state">
-          <p>暂无失败的订单</p>
-        </div>
       </div>
     </div>
 
@@ -138,6 +162,9 @@ const repayForm = reactive({
   amount: 0,
   repayType: 'NORMAL'
 })
+
+// 当前激活的页签
+const activeTab = ref('records')
 
 // 加载还款记录
 const loadRepayRecords = async () => {
@@ -266,6 +293,56 @@ onMounted(() => {
   font-size: 1.5rem;
 }
 
+.tabs-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #e8e8e8;
+  padding-bottom: 0;
+}
+
+.tab-item {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+  color: #666666;
+  background: transparent;
+  position: relative;
+  margin-bottom: -2px;
+}
+
+.tab-item:hover {
+  color: #1890ff;
+  background: #f5f5f5;
+}
+
+.tab-item.active {
+  color: #1890ff;
+  border-bottom-color: #1890ff;
+  background: #ffffff;
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-block;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  white-space: nowrap;
+  border-radius: 9px;
+  background: #ff4d4f;
+  color: white;
+  margin-left: 6px;
+  font-weight: 500;
+}
+
 .section {
   margin-bottom: 2rem;
 }
@@ -344,6 +421,17 @@ td {
   text-align: center;
   padding: 2rem;
   color: #999999;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.empty-state-cell {
+  text-align: center;
+  padding: 3rem 1rem !important;
+  border-bottom: none;
 }
 
 .btn-link {
