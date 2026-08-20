@@ -221,9 +221,9 @@ const handleSubmit = async () => {
   display: flex; 
   flex: 1; 
   width: 100%; 
-  max-width: 1400px; 
+  max-width: none; 
   margin: 0 auto; 
-  padding: 1.5rem; 
+  padding: 1.5rem 30px; 
   gap: 1.5rem; 
   box-sizing: border-box; 
 }

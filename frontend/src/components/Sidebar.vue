@@ -104,7 +104,7 @@ watch(() => props.isOpen, (newVal) => {
   display: flex; 
   align-items: center; 
   gap: 0.8rem;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
 }
 
