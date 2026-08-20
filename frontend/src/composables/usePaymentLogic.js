@@ -46,13 +46,25 @@ export const usePaymentLogic = () => {
     }
     store.setLoading(true)
     try {
-      await paymentApi.register({
-        ...userData,
-        displayName: userData.username
-      })
+      // 确保发送的数据格式正确
+      const requestData = {
+        username: userData.username,
+        password: userData.password,
+        displayName: userData.displayName || userData.username
+      }
+      
+      console.log('注册请求数据:', requestData)
+      
+      const res = await paymentApi.register(requestData)
+      
+      console.log('注册响应:', res)
+      
       store.showToast('注册成功，请登录')
     } catch (e) {
-      store.showToast('注册失败', 'error')
+      console.error('注册失败:', e)
+      console.error('错误详情:', e.response?.data)
+      const errorMessage = e.response?.data?.error || e.response?.data?.message || '注册失败'
+      store.showToast(errorMessage, 'error')
     } finally {
       store.setLoading(false)
     }

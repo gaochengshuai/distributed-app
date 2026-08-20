@@ -45,10 +45,26 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody Map<String,String> body){
         String username = body.get("username");
         String password = body.get("password");
-        if (userRepo.findByUsername(username).isPresent()) return ResponseEntity.badRequest().body(Map.of("error","exists"));
+        
+        // 验证必填字段
+        if (username == null || username.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "用户名不能为空"));
+        }
+        if (password == null || password.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "密码不能为空"));
+        }
+        
+        // 检查用户名是否已存在
+        if (userRepo.findByUsername(username).isPresent()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "用户名已存在"));
+        }
+        
         UserEntity u = new UserEntity();
-        u.setUsername(username); u.setPassword(password); u.setDisplayName(body.getOrDefault("displayName",username)); u.setCreatedAt(LocalDateTime.now());
+        u.setUsername(username.trim());
+        u.setPassword(password);
+        u.setDisplayName(body.getOrDefault("displayName", username));
+        u.setCreatedAt(LocalDateTime.now());
         userRepo.save(u);
-        return ResponseEntity.ok(u);
+        return ResponseEntity.ok(Map.of("message", "注册成功", "username", username));
     }
 }
