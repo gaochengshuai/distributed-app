@@ -40,12 +40,12 @@
           </thead>
           <tbody>
             <tr v-for="record in repayRecords" :key="record.orderId">
-              <td>{{ record.orderId }}</td>
-              <td>{{ record.billNo }}</td>
-              <td class="amount">¥ {{ record.repayAmt }}</td>
+              <td>{{ record.orderId || '-' }}</td>
+              <td>{{ record.billNo || '-' }}</td>
+              <td class="amount">¥ {{ record.repayAmt || '0.00' }}</td>
               <td>{{ getRepayTypeText(record.repayType) }}</td>
               <td>
-                <span :class="['status-badge', record.payStatus.toLowerCase()]">
+                <span :class="['status-badge', record.payStatus ? record.payStatus.toLowerCase() : '']">
                   {{ getPayStatusText(record.payStatus) }}
                 </span>
               </td>
@@ -88,9 +88,9 @@
           </thead>
           <tbody>
             <tr v-for="order in failedOrders" :key="order.orderId">
-              <td>{{ order.orderId }}</td>
+              <td>{{ order.orderId || '-' }}</td>
               <td>{{ order.billNo || '-' }}</td>
-              <td class="amount">¥ {{ order.orderAmt }}</td>
+              <td class="amount">¥ {{ order.orderAmt || '0.00' }}</td>
               <td>{{ order.failReason || '未知' }}</td>
               <td>{{ formatDate(order.createTime) }}</td>
               <td>
@@ -169,11 +169,16 @@ const activeTab = ref('records')
 // 加载还款记录
 const loadRepayRecords = async () => {
   try {
-    // TODO: 实现获取还款记录的API
     const res = await loanApi.getRepayRecords()
-    repayRecords.value = res.data
+    if (res.data && res.data.success) {
+      repayRecords.value = res.data.data || []
+    } else {
+      repayRecords.value = []
+      console.warn('获取还款记录失败:', res.data?.message)
+    }
   } catch (e) {
     console.error('加载还款记录失败', e)
+    repayRecords.value = []
   }
 }
 
@@ -181,11 +186,16 @@ const loadRepayRecords = async () => {
 const loadFailedOrders = async () => {
   try {
     const res = await paymentApi.getPayments()
-    failedOrders.value = res.data.filter(order => 
-      (order.status === 'F' || order.orderStatus === 'F') && order.orderType === 'REPAY'
-    )
+    if (res.data && Array.isArray(res.data)) {
+      failedOrders.value = res.data.filter(order => 
+        order && (order.status === 'F' || order.orderStatus === 'F') && order.orderType === 'REPAY'
+      )
+    } else {
+      failedOrders.value = []
+    }
   } catch (e) {
     console.error('加载失败订单失败', e)
+    failedOrders.value = []
   }
 }
 
@@ -245,6 +255,7 @@ const submitRepay = async () => {
 
 // 获取还款类型文本
 const getRepayTypeText = (type) => {
+  if (!type) return '-'
   const map = {
     'NORMAL': '正常还款',
     'EARLY': '提前还款',
@@ -255,6 +266,7 @@ const getRepayTypeText = (type) => {
 
 // 获取支付状态文本
 const getPayStatusText = (status) => {
+  if (!status) return '-'
   const map = {
     'S': '成功',
     'F': '失败',

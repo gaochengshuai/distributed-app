@@ -266,4 +266,53 @@ public class WithdrawController {
 
         return resp;
     }
+
+    /**
+     * 获取所有还款记录列表
+     */
+    @GetMapping("/repay/records")
+    public Map<String, Object> getRepayRecords() {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            List<ClsRepayRecord> records = repaymentService.getAllRepayRecords();
+            
+            result.put("success", true);
+            result.put("data", records);
+            result.put("total", records.size());
+
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "查询失败: " + e.getMessage());
+        }
+
+        return result;
+    }
+
+    /**
+     * 根据订单号查询还款记录
+     */
+    @GetMapping("/repay/records/{orderId}")
+    public Map<String, Object> getRepayRecordByOrder(@PathVariable String orderId) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            ClsRepayRecord record = repaymentService.getRepayRecordByOrder(orderId);
+            
+            if (record != null) {
+                result.put("success", true);
+                result.put("data", record);
+            } else {
+                result.put("success", false);
+                result.put("message", "未找到还款记录");
+            }
+
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("message", "查询失败: " + e.getMessage());
+        }
+
+        return result;
+    }
 }
+

@@ -151,7 +151,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { usePaymentStore } from '@/stores/usePaymentStore'
-import { loanApi } from '@/api/paymentApi'
+import { loanApi, paymentApi } from '@/api/paymentApi'
 
 const store = usePaymentStore()
 
@@ -194,7 +194,7 @@ const loadPendingWithdrawals = async () => {
 // 加载失败订单列表
 const loadFailedOrders = async () => {
   try {
-    const res = await loanApi.getPayments()
+    const res = await paymentApi.getPayments()
     failedOrders.value = res.data.filter(order => order.status === 'F' || order.orderStatus === 'F')
   } catch (e) {
     console.error('加载失败订单失败', e)

@@ -386,4 +386,21 @@ public class RepaymentService {
         em.persist(exception);
         logger.info("创建对账异常记录，exceptionId: {}", exception.getExceptionId());
     }
+
+    /**
+     * 获取所有还款记录列表
+     */
+    public List<ClsRepayRecord> getAllRepayRecords() {
+        logger.info("查询所有还款记录");
+        return repayRecordRepo.findAll();
+    }
+
+    /**
+     * 根据订单号查询还款记录
+     */
+    public ClsRepayRecord getRepayRecordByOrder(String orderId) {
+        logger.info("根据订单号查询还款记录，orderId: {}", orderId);
+        List<ClsRepayRecord> records = repayRecordRepo.findByOrderId(orderId);
+        return records.isEmpty() ? null : records.get(0);
+    }
 }

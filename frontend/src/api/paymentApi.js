@@ -87,6 +87,21 @@ export const loanApi = {
   },
   
   /**
+   * 获取还款记录列表
+   */
+  getRepayRecords() {
+    return apiClient.get('/api/loan/repay/records')
+  },
+  
+  /**
+   * 根据订单号查询还款记录
+   * @param {string} orderId - 订单号
+   */
+  getRepayRecordByOrder(orderId) {
+    return apiClient.get(`/api/loan/repay/records/${orderId}`)
+  },
+  
+  /**
    * 手动触发对账
    */
   reconcile() {
