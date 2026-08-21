@@ -28,6 +28,15 @@
         <span class="text">还款管理</span>
       </div>
       
+      <!-- 合同管理 -->
+      <div 
+        :class="['nav-item', { active: activeMenu === 'contracts' }]"
+        @click="selectMenu('contracts')"
+      >
+        <span class="icon">📄</span> 
+        <span class="text">合同管理</span>
+      </div>
+      
       <!-- 对账管理 -->
       <div 
         :class="['nav-item', { active: activeMenu === 'reconciliation' }]"

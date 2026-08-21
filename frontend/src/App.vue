@@ -41,6 +41,9 @@
         <!-- 还款管理视图 -->
         <RepaymentView v-else-if="currentView === 'repayment'"/>
 
+        <!-- 合同管理视图 -->
+        <ContractView v-else-if="currentView === 'contracts'"/>
+
         <!-- 对账管理视图 -->
         <ReconciliationView v-else-if="currentView === 'reconciliation'"/>
 
@@ -79,6 +82,7 @@ import LoginView from './views/LoginView.vue'
 import DashboardView from './views/DashboardView.vue'
 import WithdrawView from './views/WithdrawView.vue'
 import RepaymentView from './views/RepaymentView.vue'
+import ContractView from './views/ContractView.vue'
 import ReconciliationView from './views/ReconciliationView.vue'
 import SettingsView from './views/SettingsView.vue'
 import { usePaymentStore } from './stores/usePaymentStore'
@@ -111,10 +115,18 @@ const handleLogout = () => {
 
 // 处理菜单切换
 const handleMenuChange = (menu) => {
+  console.log('切换菜单到:', menu)
   currentView.value = menu
-  // 如果切换到订单管理，刷新数据
+  
+  // 根据不同菜单执行相应的初始化逻辑
   if (menu === 'orders') {
     fetchPayments()
+  } else if (menu === 'contracts') {
+    console.log('已切换到合同管理视图')
+  } else if (menu === 'withdraw') {
+    console.log('已切换到提款管理视图')
+  } else if (menu === 'repayment') {
+    console.log('已切换到还款管理视图')
   }
 }
 
