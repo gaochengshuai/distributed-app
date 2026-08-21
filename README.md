@@ -50,7 +50,8 @@ src/
 │   ├── ReconciliationView.vue  # 对账管理（新增）
 │   └── SettingsView.vue        # 系统设置（新增）
 ├── components/         # 视图层：通用组件
-│   └── Sidebar.vue     # 侧边栏菜单（已完善）
+│   ├── Sidebar.vue     # 侧边栏菜单（已完善）
+│   └── Pagination.vue  # 统一分页组件（可复用）
 └── App.vue             # 入口组件：布局容器
 
 功能模块说明:

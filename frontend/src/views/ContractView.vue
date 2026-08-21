@@ -108,73 +108,15 @@
         </tbody>
       </table>
       
-      <!-- 分页控件 -->
-      <div v-if="filteredContracts && filteredContracts.length > 0" class="pagination">
-        <div class="pagination-info">
-          共 {{ filteredContracts.length }} 条记录，第 {{ currentPage }}/{{ totalPages }} 页
-        </div>
-        <div class="pagination-controls">
-          <button 
-            @click="goToPage(1)" 
-            :disabled="currentPage === 1"
-            class="pagination-btn"
-            title="首页"
-          >
-            «
-          </button>
-          <button 
-            @click="goToPage(currentPage - 1)" 
-            :disabled="currentPage === 1"
-            class="pagination-btn"
-            title="上一页"
-          >
-            ‹
-          </button>
-          
-          <template v-for="page in visiblePages" :key="page">
-            <button 
-              v-if="page === '...'" 
-              class="pagination-btn pagination-ellipsis"
-              disabled
-            >
-              ...
-            </button>
-            <button 
-              v-else
-              @click="goToPage(page)" 
-              :class="['pagination-btn', { active: page === currentPage }]"
-            >
-              {{ page }}
-            </button>
-          </template>
-          
-          <button 
-            @click="goToPage(currentPage + 1)" 
-            :disabled="currentPage === totalPages"
-            class="pagination-btn"
-            title="下一页"
-          >
-            ›
-          </button>
-          <button 
-            @click="goToPage(totalPages)" 
-            :disabled="currentPage === totalPages"
-            class="pagination-btn"
-            title="末页"
-          >
-            »
-          </button>
-        </div>
-        <div class="page-size-selector">
-          <label>每页显示：</label>
-          <select v-model="pageSize" @change="handlePageSizeChange" class="input-field page-size-select">
-            <option value="10">10 条</option>
-            <option value="20">20 条</option>
-            <option value="50">50 条</option>
-            <option value="100">100 条</option>
-          </select>
-        </div>
-      </div>
+      <!-- 使用统一的分页组件 -->
+      <Pagination 
+        v-if="filteredContracts && filteredContracts.length > 0"
+        :total="filteredContracts.length"
+        :current-page="currentPage"
+        :page-size="pageSize"
+        @page-change="handlePageChange"
+        @page-size-change="handlePageSizeChangeFromComponent"
+      />
     </div>
 
     <!-- 统计信息（基于筛选结果） -->
@@ -231,14 +173,8 @@
         
         <div class="form-group">
           <label>签署金额 <span class="required">*</span></label>
-          <input 
-            v-model.number="modalForm.signAmt" 
-            type="number" 
-            step="0.01" 
-            min="0"
-            placeholder="0.00" 
-            class="input-field" 
-          />
+          <input v-model.number="modalForm.signAmt" 
+            type="number" step="0.01" min="0" placeholder="0.00" class="input-field"/>
         </div>
         
         <div class="modal-actions">
@@ -255,6 +191,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { contractApi } from '../api/paymentApi'
+import Pagination from '../components/Pagination.vue'
 
 // 合同列表数据
 const contracts = ref([])
@@ -383,6 +320,17 @@ const goToPage = (page) => {
 
 // 每页显示数量变化
 const handlePageSizeChange = () => {
+  currentPage.value = 1 // 重置到第一页
+}
+
+// 分页组件的页码变化事件处理
+const handlePageChange = (page) => {
+  currentPage.value = page
+}
+
+// 分页组件的每页数量变化事件处理
+const handlePageSizeChangeFromComponent = (newSize) => {
+  pageSize.value = newSize
   currentPage.value = 1 // 重置到第一页
 }
 
@@ -761,82 +709,6 @@ onMounted(() => {
   margin-bottom: 1rem;
 }
 
-/* 分页控件 */
-.pagination {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  background: #fafafa;
-  border-top: 1px solid #e8e8e8;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.pagination-info {
-  color: #666;
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-.pagination-controls {
-  display: flex;
-  gap: 0.25rem;
-  align-items: center;
-}
-
-.pagination-btn {
-  min-width: 32px;
-  height: 32px;
-  padding: 0 0.5rem;
-  border: 1px solid #d9d9d9;
-  background: white;
-  color: #333;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.3s;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pagination-btn:hover:not(:disabled) {
-  border-color: #1890ff;
-  color: #1890ff;
-}
-
-.pagination-btn.active {
-  background: #1890ff;
-  border-color: #1890ff;
-  color: white;
-}
-
-.pagination-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.pagination-btn.pagination-ellipsis {
-  border: none;
-  background: transparent;
-  cursor: default;
-  color: #999;
-}
-
-.page-size-selector {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #666;
-  font-size: 14px;
-}
-
-.page-size-select {
-  width: auto;
-  padding: 0.4rem 0.8rem;
-  font-size: 14px;
-}
 
 /* 统计信息 */
 .statistics {

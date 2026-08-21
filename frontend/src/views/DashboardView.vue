@@ -44,23 +44,23 @@
         <p>暂无订单数据，请点击右上角创建</p>
       </div>
 
-      <!-- 分页控件 -->
-      <div class="pagination" v-if="totalPages > 1">
-        <button @click="currentPage--" :disabled="currentPage === 1" class="page-btn">
-          &lt; 上一页
-        </button>
-        <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 页</span>
-        <button @click="currentPage++" :disabled="currentPage === totalPages" class="page-btn">
-          下一页 &gt;
-        </button>
-      </div>
+      <!-- 使用统一的分页组件 -->
+      <Pagination 
+        v-if="payments.length > 0"
+        :total="payments.length"
+        :current-page="currentPage"
+        :page-size="pageSize"
+        @page-change="handlePageChange"
+        @page-size-change="handlePageSizeChange"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { usePaymentStore } from '@/stores/usePaymentStore'
+import Pagination from '../components/Pagination.vue'
 
 const store = usePaymentStore()
 const payments = computed(() => store.state.payments)
@@ -68,28 +68,36 @@ const totalAmount = computed(() => store.totalAmount)
 
 // 分页逻辑
 const currentPage = ref(1)
-const pageSize = 10
+const pageSize = ref(10)
 
-const totalPages = computed(() => Math.ceil(payments.value.length / pageSize))
+const totalPages = computed(() => Math.ceil(payments.value.length / pageSize.value))
 
 const paginatedPayments = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  const end = start + pageSize
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
   return payments.value.slice(start, end)
 })
 
 // 监听数据变化，如果删除了数据导致当前页超出范围，自动回退到最后一页
-// 注意：这里简单处理，实际项目中可能需要更复杂的 watch
-// 当 payments 长度变化时，检查 currentPage 是否越界
-import { watch } from 'vue'
 watch(payments, (newVal) => {
-  const newTotalPages = Math.ceil(newVal.length / pageSize)
+  const newTotalPages = Math.ceil(newVal.length / pageSize.value)
   if (currentPage.value > newTotalPages && newTotalPages > 0) {
     currentPage.value = newTotalPages
   } else if (newTotalPages === 0) {
     currentPage.value = 1
   }
 })
+
+// 处理页码变化
+const handlePageChange = (page) => {
+  currentPage.value = page
+}
+
+// 处理每页数量变化
+const handlePageSizeChange = (newSize) => {
+  pageSize.value = newSize
+  currentPage.value = 1 // 重置到第一页
+}
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
@@ -199,38 +207,4 @@ td { font-size: 14px;}
   background: #40a9ff;
 }
 
-/* 分页控件 */
-.pagination {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  margin-top: 1.5rem;
-  gap: 1rem;
-}
-
-.page-btn {
-  padding: 0.5rem 1rem;
-  border: 1px solid #d9d9d9;
-  background: #ffffff;
-  border-radius: 4px;
-  cursor: pointer;
-  color: #333333;
-  transition: all 0.3s;
-}
-
-.page-btn:hover:not(:disabled) {
-  border-color: #1890ff;
-  color: #1890ff;
-}
-
-.page-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-  background: #f5f5f5;
-}
-
-.page-info {
-  font-size: 14px;
-  color: #666666;
-}
 </style>
