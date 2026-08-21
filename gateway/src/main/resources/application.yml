@@ -16,7 +16,7 @@ spring:
             - id: payment
               uri: http://localhost:8081
               predicates:
-                - Path=/api/payments/**,/api/loan/**
+                - Path=/api/payments/**,/api/loan/**,/api/contracts/**
             - id: message
               uri: http://localhost:8083
               predicates:
